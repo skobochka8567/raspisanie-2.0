@@ -105,19 +105,39 @@ object ScheduleEngine {
         val session = Jsoup.newSession()
             .userAgent(USER_AGENT)
             .timeout(15000)
+            .header("Accept-Language", "ru-RU,ru;q=0.9")
 
         // Шаг 1: обычная загрузка страницы — там же лежит текущий X-CS-ID
-        val initial = session.newRequest(url).execute()
-        val csId = Regex("X-CS-ID',\\s*'([a-f0-9]+)'").find(initial.body())?.groupValues?.get(1)
+        val initialResponse = session.newRequest(url)
+            .header("Referer", "https://www.asu.ru/timetable/")
+            .execute()
+        val initialBody = initialResponse.body()
+        val csId = Regex("X-CS-ID[\"']\\s*,\\s*[\"']([a-f0-9]{10,})[\"']")
+            .find(initialBody)?.groupValues?.get(1)
+
+        var secondStatus: Int? = null
+        var doc = initialResponse.parse()
 
         // Шаг 2: повторный запрос с этим заголовком — так сайт отдаёт настоящую таблицу пар
-        val doc = if (csId != null) {
-            session.newRequest(url).header("X-CS-ID", csId).get()
-        } else {
-            initial.parse()
+        if (csId != null) {
+            val secondResponse = session.newRequest(url)
+                .header("X-CS-ID", csId)
+                .header("Referer", url)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .execute()
+            secondStatus = secondResponse.statusCode()
+            doc = secondResponse.parse()
         }
 
-        val rows = doc.select("div.schedule_table-body-row")
+        val tableRoot = doc.selectFirst("div.schedule_table")
+        if (tableRoot == null) {
+            throw Exception(
+                "не нашли таблицу; http1=${initialResponse.statusCode()} " +
+                    "csId=${csId != null} http2=$secondStatus длина_ответа=${doc.html().length}"
+            )
+        }
+
+        val rows = tableRoot.select("div.schedule_table-body-row")
             .filterNot { it.hasClass("schedule_table-body-row__dropdown") }
 
         return rows.mapNotNull { row ->
