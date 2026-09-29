@@ -33,7 +33,8 @@ class MainActivity : AppCompatActivity() {
         val remindersText = config.reminders.joinToString("\n") {
             "• ${"%02d:%02d".format(it.hour, it.minute)}"
         }
-        statusText.text = "Уведомления приходят:\n$remindersText\n\n" +
+        statusText.text = "СБОРКА-МЕТКА: v3-погода-дебаг\n\n" +
+            "Уведомления приходят:\n$remindersText\n\n" +
             "Расписание, адрес и что брать — из config.json внутри проекта."
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
