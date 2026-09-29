@@ -219,6 +219,7 @@ object ScheduleEngine {
             val weather = try {
                 fetchWeather(config.homeLat, config.homeLon, targetDate, departureTime)
             } catch (e: Exception) {
+                sb.append("погода: не удалось получить (${e.javaClass.simpleName}: ${e.message})\n")
                 null
             }
             if (weather != null) {
